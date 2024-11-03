@@ -5,7 +5,12 @@ import {isBlank} from '@ember/utils';
 
 export default function mockAuthentication(server) {
     // Password sign-in
-    server.post('/session', function () {
+    server.post('/session', function (schema, request) {
+        const data = JSON.parse(request.requestBody);
+        if (!data.username || !data.password) {
+            return new Response(401);
+        }
+
         return new Response(201);
     });
 
@@ -16,7 +21,7 @@ export default function mockAuthentication(server) {
 
     // 2fa code re-send
     server.post('/session/verify', function () {
-        return new Response(200);
+        return new Response(200, {}, 'OK');
     });
 
     server.post('/authentication/password_reset', function (schema, request) {

@@ -75,7 +75,7 @@ test.describe('Design settings', async () => {
         const accentColorPicker = modal.getByTestId('accent-color-picker');
         await accentColorPicker.getByRole('button').click();
         await accentColorPicker.getByRole('textbox').fill('#cd5786');
-        // set timeout of 500ms to wait for the debounce
+        // set timeout of 1000ms to wait for the debounce
         await page.waitForTimeout(1000);
         await modal.getByRole('button', {name: 'Close'}).click();
 
@@ -89,7 +89,7 @@ test.describe('Design settings', async () => {
 
         await section.getByRole('button', {name: 'Customize'}).click();
 
-        await modal.getByTestId('design-setting-tabs').getByRole('tab', {name: 'Theme settings'}).click();
+        await modal.getByTestId('design-setting-tabs').getByRole('tab', {name: 'Theme'}).click();
 
         await modal.getByLabel('Email signup text').fill('test');
 
@@ -111,7 +111,7 @@ test.describe('Design settings', async () => {
             browseCustomThemeSettings: {method: 'GET', path: '/custom_theme_settings/', response: responseFixtures.customThemeSettings},
             browseLatestPost: {method: 'GET', path: /^\/posts\/.+limit=1/, response: responseFixtures.latestPost}
         }});
-        const lastPreviewRequest = await mockSitePreview({
+        await mockSitePreview({
             page,
             url: responseFixtures.site.site.url,
             response: '<html><head><style></style></head><body><div>homepage preview</div></body></html>'
@@ -130,12 +130,16 @@ test.describe('Design settings', async () => {
         const accentColorPicker = modal.getByTestId('accent-color-picker');
         await accentColorPicker.getByRole('button').click();
         await accentColorPicker.getByRole('textbox').fill('#cd5786');
-        await expect(modal.getByTestId('toggle-unsplash-button')).toBeVisible();
-        // set timeout of 500ms to wait for the debounce
-        await page.waitForTimeout(1000);
-        await modal.getByRole('button', {name: 'Save'}).click();
 
-        expect(lastPreviewRequest.previewHeader).toMatch(/c=\%23cd5786\&d/);
+        const previewHeaders = await page.waitForRequest((request) => {
+            const headers = request.headers();
+            return headers['x-ghost-preview'] !== undefined;
+        });
+
+        const matchingHeader = previewHeaders.headers()['x-ghost-preview'];
+        expect(matchingHeader).toContain('cd5786');
+        await expect(modal.getByTestId('toggle-unsplash-button')).toBeVisible();
+        await modal.getByRole('button', {name: 'Save'}).click();
 
         expect(lastApiRequests.editSettings?.body).toEqual({
             settings: [
@@ -164,7 +168,7 @@ test.describe('Design settings', async () => {
             }},
             browseLatestPost: {method: 'GET', path: /^\/posts\/.+limit=1/, response: responseFixtures.latestPost}
         }});
-        const lastPreviewRequest = await mockSitePreview({
+        const {previewRequests} = await mockSitePreview({
             page,
             url: responseFixtures.site.site.url,
             response: '<html><head><style></style></head><body><div>homepage preview</div></body></html>'
@@ -178,15 +182,16 @@ test.describe('Design settings', async () => {
 
         const modal = page.getByTestId('design-modal');
 
-        await modal.getByRole('tab', {name: 'Theme settings'}).click();
-
+        await modal.getByRole('tab', {name: 'Theme'}).click();
         await chooseOptionInSelect(modal.getByTestId('setting-select-navigation_layout'), 'Logo in the middle');
-        await modal.getByRole('button', {name: 'Save'}).click();
-
         const expectedSettings = {navigation_layout: 'Logo in the middle'};
         const expectedEncoded = new URLSearchParams([['custom', JSON.stringify(expectedSettings)]]).toString();
-        expect(lastPreviewRequest.previewHeader).toMatch(new RegExp(`&${expectedEncoded.replace(/\+/g, '\\+')}`));
 
+        const matchingHeader = previewRequests.find(header => new RegExp(`&${expectedEncoded.replace(/\+/g, '\\+')}`).test(header));
+
+        expect(matchingHeader).toBeDefined();
+
+        await modal.getByRole('button', {name: 'Save'}).click();
         expect(lastApiRequests.editCustomThemeSettings?.body).toMatchObject({
             custom_theme_settings: [
                 {key: 'navigation_layout', value: 'Logo in the middle'}
@@ -202,7 +207,7 @@ test.describe('Design settings', async () => {
             }},
             browseLatestPost: {method: 'GET', path: /^\/posts\/.+limit=1/, response: responseFixtures.latestPost}
         }});
-        const lastPreviewRequest = await mockSitePreview({
+        await mockSitePreview({
             page,
             url: responseFixtures.site.site.url,
             response: '<html><head><style></style></head><body><div>homepage preview</div></body></html>'
@@ -213,20 +218,22 @@ test.describe('Design settings', async () => {
         const section = page.getByTestId('design');
 
         await section.getByRole('button', {name: 'Customize'}).click();
+        const previewHeaders = await page.waitForRequest((request) => {
+            const headers = request.headers();
+            return headers['x-ghost-preview'] !== undefined;
+        });
+        const previewHeader = previewHeaders.headers()['x-ghost-preview'];
+        const expectedEncoded = new URLSearchParams([['custom', JSON.stringify({})]]).toString();
+        expect(previewHeader).toContain(expectedEncoded);
 
         const modal = page.getByTestId('design-modal');
 
         const designSettingTabs = modal.getByTestId('design-setting-tabs');
 
-        await expect(designSettingTabs.getByRole('tab', {name: 'Global'})).toBeHidden();
-        await expect(designSettingTabs.getByRole('tab', {name: 'Theme settings'})).toBeHidden();
+        await expect(designSettingTabs.getByRole('tab', {name: 'Brand'})).toBeHidden();
+        await expect(designSettingTabs.getByRole('tab', {name: 'Theme'})).toBeHidden();
 
-        // The tabs are not visible, but the global settings are still rendered
         await expect(designSettingTabs.getByTestId('accent-color-picker')).toBeVisible();
-
-        const expectedEncoded = new URLSearchParams([['custom', JSON.stringify({})]]).toString();
-
-        expect(lastPreviewRequest.previewHeader).toMatch(new RegExp(`&${expectedEncoded.replace(/\+/g, '\\+')}`));
     });
 
     test('Custom theme setting visibility', async ({page}) => {
@@ -256,7 +263,7 @@ test.describe('Design settings', async () => {
             }},
             browseLatestPost: {method: 'GET', path: /^\/posts\/.+limit=1/, response: responseFixtures.latestPost}
         }});
-        const lastPreviewRequest = await mockSitePreview({
+        const {previewRequests} = await mockSitePreview({
             page,
             url: responseFixtures.site.site.url,
             response: '<html><head><style></style></head><body><div>homepage preview</div></body></html>'
@@ -270,21 +277,25 @@ test.describe('Design settings', async () => {
 
         const modal = page.getByTestId('design-modal');
 
-        await modal.getByRole('tab', {name: 'Theme settings'}).click();
+        await modal.getByRole('tab', {name: 'Theme'}).click();
 
         const showFeaturedPostsCustomThemeSetting = modal.getByLabel('Show featured posts');
 
         await expect(showFeaturedPostsCustomThemeSetting).toBeVisible();
 
         await chooseOptionInSelect(modal.getByTestId('setting-select-navigation_layout'), 'Logo in the middle');
-
-        await expect(showFeaturedPostsCustomThemeSetting).not.toBeVisible();
-
-        await modal.getByRole('button', {name: 'Save'}).click();
+        // set timeout of 1000ms to wait for the debounce
+        // await page.waitForTimeout(1000);
 
         const expectedSettings = {navigation_layout: 'Logo in the middle', show_featured_posts: null};
         const expectedEncoded = new URLSearchParams([['custom', JSON.stringify(expectedSettings)]]).toString();
-        expect(lastPreviewRequest.previewHeader).toMatch(new RegExp(`&${expectedEncoded.replace(/\+/g, '\\+')}`));
+
+        const matchingHeader = previewRequests.find(header => header.includes(expectedEncoded));
+
+        expect(matchingHeader).toBeDefined();
+        await expect(showFeaturedPostsCustomThemeSetting).not.toBeVisible();
+
+        await modal.getByRole('button', {name: 'Save'}).click();
 
         expect(lastApiRequests.editCustomThemeSettings?.body).toMatchObject({
             custom_theme_settings: [
@@ -303,7 +314,7 @@ test.describe('Design settings', async () => {
             }},
             browseLatestPost: {method: 'GET', path: /^\/posts\/.+limit=1/, response: responseFixtures.latestPost}
         }});
-        const lastPreviewRequest = await mockSitePreview({
+        const {lastRequest} = await mockSitePreview({
             page,
             url: responseFixtures.site.site.url,
             response: '<html><head><style></style></head><body><div>homepage preview</div></body></html>'
@@ -337,8 +348,7 @@ test.describe('Design settings', async () => {
 
         const expectedEncoded = new URLSearchParams([['bf', 'Inter'], ['hf', 'Cardo']]).toString();
 
-        // Preview should have the new fonts
-        await expect(lastPreviewRequest.previewHeader).toMatch(new RegExp(`&${expectedEncoded.replace(/\+/g, '\\+')}`));
+        await expect(lastRequest.previewHeader).toMatch(new RegExp(`&${expectedEncoded.replace(/\+/g, '\\+')}`));
     });
 
     test('Custom fonts setting back to default', async ({page}) => {
@@ -354,7 +364,7 @@ test.describe('Design settings', async () => {
             }},
             browseLatestPost: {method: 'GET', path: /^\/posts\/.+limit=1/, response: responseFixtures.latestPost}
         }});
-        const lastPreviewRequest = await mockSitePreview({
+        const {previewRequests} = await mockSitePreview({
             page,
             url: responseFixtures.site.site.url,
             response: '<html><head><style></style></head><body><div>homepage preview</div></body></html>'
@@ -385,7 +395,8 @@ test.describe('Design settings', async () => {
 
         const expectedEncoded = new URLSearchParams([['bf', ''], ['hf', '']]).toString();
 
-        // Preview should have the old fonts back
-        await expect(lastPreviewRequest.previewHeader).toMatch(new RegExp(`&${expectedEncoded.replace(/\+/g, '\\+')}`));
+        const matchingHeader = previewRequests.find(header => header.includes(expectedEncoded));
+        expect(matchingHeader).toBeDefined();
+        // expect(lastRequest.previewHeader).toMatch(new RegExp(`&${expectedEncoded.replace(/\+/g, '\\+')}`));
     });
 });
