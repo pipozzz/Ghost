@@ -1,6 +1,6 @@
 import ArticleModal from '../components/feed/ArticleModal';
 import NiceModal from '@ebay/nice-modal-react';
-import {type Activity} from '../components/activities/ActivityItem';
+import {type Activity} from '@tryghost/admin-x-framework/api/activitypub';
 
 export const handleViewContent = (
     activity: Activity,
@@ -12,8 +12,8 @@ export const handleViewContent = (
         activityId: activity.id,
         object: activity.object,
         actor: authorActor,
-        comments: Array.isArray(activity.object.replies) ? activity.object.replies : [],
         focusReply,
+        width: activity.object.type === 'Article' ? 'wide' : 'narrow',
         updateActivity
     });
 };

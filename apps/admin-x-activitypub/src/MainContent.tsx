@@ -1,63 +1,44 @@
-import Activities from './components/Activities';
-import Inbox from './components/Inbox';
-import Profile from './components/Profile';
-import Search from './components/Search';
-import {ActivityPubAPI} from './api/activitypub';
-import {useBrowseSite} from '@tryghost/admin-x-framework/api/site';
-import {useQuery} from '@tanstack/react-query';
+import Inbox from '@views/Inbox';
+import Notifications from '@views/Notifications';
+import Profile from '@views/Profile';
+import Search from '@views/Search';
+import Sidebar from '@components/layout/Sidebar';
+import {Header} from '@components/layout/Header';
 import {useRouting} from '@tryghost/admin-x-framework/routing';
 
-export function useBrowseInboxForUser(handle: string) {
-    const site = useBrowseSite();
-    const siteData = site.data?.site;
-    const siteUrl = siteData?.url ?? window.location.origin;
-    const api = new ActivityPubAPI(
-        new URL(siteUrl),
-        new URL('/ghost/api/admin/identities/', window.location.origin),
-        handle
-    );
-    return useQuery({
-        queryKey: [`inbox:${handle}`],
-        async queryFn() {
-            return api.getInbox();
-        }
-    });
+interface ContentProps {
+    route: string;
 }
 
-export function useFollowersForUser(handle: string) {
-    const site = useBrowseSite();
-    const siteData = site.data?.site;
-    const siteUrl = siteData?.url ?? window.location.origin;
-    const api = new ActivityPubAPI(
-        new URL(siteUrl),
-        new URL('/ghost/api/admin/identities/', window.location.origin),
-        handle
-    );
-    return useQuery({
-        queryKey: [`followers:${handle}`],
-        async queryFn() {
-            return api.getFollowers();
-        }
-    });
-}
+const Content: React.FC<ContentProps> = ({route}) => {
+    switch (route) {
+    case 'search':
+        return <Search />;
+    case 'notifications':
+        return <Notifications />;
+    case 'profile':
+        return <Profile />;
+    default:
+        const layout = (route === 'inbox' || route === '') ? 'inbox' : 'feed';
+        return <Inbox layout={layout} />;
+    }
+};
 
 const MainContent = () => {
     const {route} = useRouting();
-    const mainRoute = route.split('/')[0];
-    switch (mainRoute) {
-    case 'search':
-        return <Search />;
-        break;
-    case 'activity':
-        return <Activities />;
-        break;
-    case 'profile':
-        return <Profile />;
-        break;
-    default:
-        return <Inbox />;
-        break;
-    }
+    const mainRoute = route.split('/')[0] || 'inbox';
+
+    return (
+        <div className='mx-auto flex h-screen w-full max-w-page flex-col overflow-y-auto'>
+            <Header route={mainRoute} />
+            <div className='grid grid-cols-[auto_292px] items-start gap-8 px-8'>
+                <div className='z-0'>
+                    <Content route={mainRoute} />
+                </div>
+                <Sidebar route={mainRoute} />
+            </div>
+        </div>
+    );
 };
 
 export default MainContent;
