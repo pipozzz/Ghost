@@ -59,6 +59,11 @@
         "members_stripe_webhook_secret": {
             "defaultValue": null,
             "type": "string"
+        },
+        "site_uuid": {
+            "defaultValue": null,
+            "type": "string",
+            "flags": "PUBLIC,RO"
         }
     },
     "site": {
@@ -546,6 +551,14 @@
                 "isIn": [["true", "false"]]
             },
             "type": "boolean"
+        },
+        "web_analytics": {
+            "defaultValue": "true",
+            "validations": {
+                "isEmpty": false,
+                "isIn": [["true", "false"]]
+            },
+            "type": "boolean"
         }
     },
     "pintura": {
@@ -593,6 +606,12 @@
                 "isEmpty": false,
                 "isIn": [["true", "false"]]
             },
+            "type": "boolean"
+        }
+    },
+    "security": {
+        "require_email_mfa": {
+            "defaultValue": false,
             "type": "boolean"
         }
     }

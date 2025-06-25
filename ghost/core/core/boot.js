@@ -313,7 +313,6 @@ async function initServices() {
     const slack = require('./server/services/slack');
     const webhooks = require('./server/services/webhooks');
     const limits = require('./server/services/limits');
-    const apiVersionCompatibility = require('./server/services/api-version-compatibility');
     const scheduling = require('./server/adapters/scheduling');
     const comments = require('./server/services/comments');
     const staffService = require('./server/services/staff');
@@ -335,6 +334,7 @@ async function initServices() {
     const recommendationsService = require('./server/services/recommendations');
     const emailAddressService = require('./server/services/email-address');
     const statsService = require('./server/services/stats');
+    const explorePingService = require('./server/services/explore-ping');
 
     const urlUtils = require('./shared/url-utils');
 
@@ -367,7 +367,6 @@ async function initServices() {
         emailService.init(),
         emailAnalytics.init(),
         webhooks.listen(),
-        apiVersionCompatibility.init(),
         scheduling.init({
             apiUrl: urlUtils.urlFor('api', {type: 'admin'}, true)
         }),
@@ -379,46 +378,12 @@ async function initServices() {
         mailEvents.init(),
         donationService.init(),
         recommendationsService.init(),
-        statsService.init()
+        statsService.init(),
+        explorePingService.init()
     ]);
     debug('End: Services');
 
     debug('End: initServices');
-}
-
-/**
- * Set up an dependencies that need to be injected into NestJS
- */
-async function initNestDependencies() {
-    debug('Begin: initNestDependencies');
-    const GhostNestApp = require('@tryghost/ghost');
-    const providers = [];
-    providers.push({
-        provide: 'logger',
-        useValue: require('@tryghost/logging')
-    }, {
-        provide: 'SessionService',
-        useValue: require('./server/services/auth/session').sessionService
-    }, {
-        provide: 'AdminAuthenticationService',
-        useValue: require('./server/services/auth/api-key').admin
-    }, {
-        provide: 'DomainEvents',
-        useValue: require('@tryghost/domain-events')
-    }, {
-        provide: 'SettingsCache',
-        useValue: require('./shared/settings-cache')
-    }, {
-        provide: 'knex',
-        useValue: require('./server/data/db').knex
-    }, {
-        provide: 'UrlUtils',
-        useValue: require('./shared/url-utils')
-    });
-    for (const provider of providers) {
-        GhostNestApp.addProvider(provider);
-    }
-    debug('End: initNestDependencies');
 }
 
 /**
@@ -449,7 +414,7 @@ async function initBackgroundServices({config}) {
         await emailAnalyticsJobs.scheduleRecurringJobs();
     }
 
-    const updateCheck = require('./server/update-check');
+    const updateCheck = require('./server/services/update-check');
     updateCheck.scheduleRecurringJobs();
 
     const milestonesService = require('./server/services/milestones');
@@ -577,14 +542,7 @@ async function bootGhost({backend = true, frontend = true, server = true} = {}) 
             await initAppService();
         }
 
-        await initServices({config});
-
-        // Gate the NestJS framework behind an env var to prevent it from being loaded (and slowing down boot)
-        // If we ever ship the new framework, we can remove this
-        // Using an env var because you can't use labs flags here
-        if (process.env.GHOST_ENABLE_NEST_FRAMEWORK) {
-            await initNestDependencies();
-        }
+        await initServices();
         debug('End: Load Ghost Services & Apps');
 
         // Step 5 - Mount the full Ghost app onto the minimal root app & disable maintenance mode

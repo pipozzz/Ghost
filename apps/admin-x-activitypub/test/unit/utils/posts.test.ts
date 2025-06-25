@@ -10,6 +10,7 @@ describe('mapPostToActivity', function () {
             type: PostType.Article,
             title: 'Test Post',
             excerpt: 'Test Excerpt',
+            summary: 'Test Summary',
             content: 'Test Content',
             url: 'https://example.com/posts/123',
             featureImageUrl: 'https://example.com/posts/123/feature.jpg',
@@ -18,14 +19,29 @@ describe('mapPostToActivity', function () {
             likedByMe: true,
             replyCount: 3,
             readingTimeMinutes: 4,
-            attachments: [],
+            attachments: [
+                {
+                    type: 'Image',
+                    mediaType: 'image/jpeg',
+                    name: 'test.jpg',
+                    url: 'https://example.com/test.jpg'
+                },
+                {
+                    type: 'Image',
+                    mediaType: 'image/jpeg',
+                    name: 'test1.jpg',
+                    url: 'https://example.com/test1.jpg'
+                }
+            ],
             author: {
                 id: 'https://example.com/users/123',
                 handle: '@testuser@example.com',
                 avatarUrl: 'https://example.com/users/123/avatar.jpg',
                 name: 'Test User',
-                url: 'https://example.com/users/123'
+                url: 'https://example.com/users/123',
+                followedByMe: false
             },
+            authoredByMe: true,
             repostCount: 5,
             repostedByMe: false,
             repostedBy: null
@@ -45,7 +61,8 @@ describe('mapPostToActivity', function () {
                     handle: '@testuser2@example.com',
                     avatarUrl: 'https://example.com/users/456/avatar.jpg',
                     name: 'Test User 2',
-                    url: 'https://example.com/users/456'
+                    url: 'https://example.com/users/456',
+                    followedByMe: true
                 }
             }).type
         ).toBe('Announce');
@@ -67,7 +84,8 @@ describe('mapPostToActivity', function () {
                 handle: '@testuser2@example.com',
                 avatarUrl: 'https://example.com/users/456/avatar.jpg',
                 name: 'Test User 2',
-                url: 'https://example.com/users/456'
+                url: 'https://example.com/users/456',
+                followedByMe: false
             }
         }).actor;
 
@@ -88,6 +106,13 @@ describe('mapPostToActivity', function () {
                 type: PostType.Note
             }).object.type
         ).toBe('Note');
+
+        expect(
+            mapPostToActivity({
+                ...post,
+                type: PostType.Tombstone
+            }).object.type
+        ).toBe('Tombstone');
     });
 
     test('it sets the correct object', function () {
@@ -96,6 +121,7 @@ describe('mapPostToActivity', function () {
         expect(object.type).toBe('Article');
         expect(object.name).toBe('Test Post');
         expect(object.content).toBe('Test Content');
+        expect(object.summary).toBe('Test Summary');
         expect(object.url).toBe('https://example.com/posts/123');
         expect(object.attributedTo.id).toBe('https://example.com/users/123');
         expect(object.published).toBe('2024-01-01T00:00:00Z');
@@ -105,5 +131,78 @@ describe('mapPostToActivity', function () {
         expect(object.liked).toBe(true);
         expect(object.reposted).toBe(false);
         expect(object.repostCount).toBe(5);
+    });
+
+    test('it sets the correct attachments', function () {
+        const object = mapPostToActivity(post).object;
+
+        expect(object.attachment).toHaveLength(2);
+        expect(object.attachment[0]).toEqual({
+            type: 'Image',
+            mediaType: 'image/jpeg',
+            name: 'test.jpg',
+            url: 'https://example.com/test.jpg'
+        });
+        expect(object.attachment[1]).toEqual({
+            type: 'Image',
+            mediaType: 'image/jpeg',
+            name: 'test1.jpg',
+            url: 'https://example.com/test1.jpg'
+        });
+    });
+
+    test('it maps followedByMe property correctly', function () {
+        // Test for regular posts (non-reposts)
+        const activity = mapPostToActivity({
+            ...post,
+            author: {
+                ...post.author,
+                followedByMe: true
+            }
+        });
+
+        expect(activity.actor.followedByMe).toBe(true);
+
+        // Test for reposts
+        const repostActivity = mapPostToActivity({
+            ...post,
+            repostedBy: {
+                id: 'https://example.com/users/456',
+                handle: '@testuser2@example.com',
+                avatarUrl: 'https://example.com/users/456/avatar.jpg',
+                name: 'Test User 2',
+                url: 'https://example.com/users/456',
+                followedByMe: true
+            }
+        });
+
+        expect(repostActivity.actor.followedByMe).toBe(true);
+        expect(repostActivity.object.attributedTo.followedByMe).toBe(false); // Original author from post.author
+    });
+
+    test('it maps reposted property correctly', function () {
+        // Test for regular posts
+        const activity = mapPostToActivity({
+            ...post,
+            repostedByMe: true
+        });
+
+        expect(activity.object.reposted).toBe(true);
+
+        // Test for reposts
+        const repostActivity = mapPostToActivity({
+            ...post,
+            repostedByMe: false,
+            repostedBy: {
+                id: 'https://example.com/users/456',
+                handle: '@testuser2@example.com',
+                avatarUrl: 'https://example.com/users/456/avatar.jpg',
+                name: 'Test User 2',
+                url: 'https://example.com/users/456',
+                followedByMe: true
+            }
+        });
+
+        expect(repostActivity.object.reposted).toBe(false);
     });
 });

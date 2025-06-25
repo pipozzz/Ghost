@@ -18,12 +18,10 @@ const packageJson = require('../../package.json');
 assert.ok(packageJson.workspaces, 'package.json must have workspaces defined');
 
 // Exclude:
-// /ghost/tinybird
 // /ghost/extract-api-key
 
 const packagesToExclude = [
-    'tinybird',
-    'extract-api-key',
+    'extract-api-key'
 ];
 
 // Create volume names for each workspace

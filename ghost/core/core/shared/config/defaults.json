@@ -13,6 +13,9 @@
         "forceUpdate": false
     },
     "privacy": false,
+    "security": {
+        "staffDeviceVerification": true
+    },
     "useMinFiles": true,
     "paths": {
         "contentPath": "content/",
@@ -192,6 +195,7 @@
     "sendWelcomeEmail": true,
     "stripeDirect": false,
     "enableStripePromoCodes": false,
+    "enableTipsAndDonations": true,
     "emailAnalytics": true,
     "linkClickTrackingCacheMemberUuid": false,
     "backgroundJobs": {
@@ -200,7 +204,7 @@
     },
     "portal": {
         "url": "https://cdn.jsdelivr.net/ghost/portal@~{version}/umd/portal.min.js",
-        "version": "2.49"
+        "version": "2.51"
     },
     "sodoSearch": {
         "url": "https://cdn.jsdelivr.net/ghost/sodo-search@~{version}/umd/sodo-search.min.js",
@@ -213,7 +217,7 @@
     },
     "comments": {
         "url": "https://cdn.jsdelivr.net/ghost/comments-ui@~{version}/umd/comments-ui.min.js",
-        "version": "1.0"
+        "version": "1.2"
     },
     "signupForm": {
         "url": "https://cdn.jsdelivr.net/ghost/signup-form@~{version}/umd/signup-form.min.js",

@@ -24,6 +24,7 @@ export function mapPostToActivity(post: Post): Activity {
         },
         name: post.author.name,
         preferredUsername: post.author.handle.split('@')[1],
+        followedByMe: post.author.followedByMe,
         // These are not used but needed to comply with the ActorProperties type
         '@context': '',
         discoverable: false,
@@ -55,6 +56,7 @@ export function mapPostToActivity(post: Post): Activity {
             },
             name: post.repostedBy.name,
             preferredUsername: post.repostedBy.handle.split('@')[1],
+            followedByMe: post.repostedBy.followedByMe,
             // These are not used but needed to comply with the ActorProperties type
             '@context': '',
             discoverable: false,
@@ -77,22 +79,24 @@ export function mapPostToActivity(post: Post): Activity {
         };
     }
 
-    // If the post is an article, then the object type is: "Article"
-    // otherwise, we use "Note" as the object type
-    let objectType: 'Article' | 'Note' = 'Note';
+    let objectType: 'Article' | 'Note' | 'Tombstone' = 'Note';
 
     if (post.type === PostType.Article) {
         objectType = 'Article';
+    } else if (post.type === PostType.Tombstone) {
+        objectType = 'Tombstone';
     }
 
     const object = {
         type: objectType,
         name: post.title,
         content: post.content,
+        summary: post.summary,
         url: post.url,
         attributedTo: actor,
         image: post.featureImageUrl ?? '',
         published: post.publishedAt,
+        attachment: post.attachments,
         preview: {
             type: '',
             content: post.excerpt
@@ -100,9 +104,12 @@ export function mapPostToActivity(post: Post): Activity {
         // These are used in the app, but are not part of the ObjectProperties type
         id: post.id,
         replyCount: post.replyCount,
+        likeCount: post.likeCount,
         liked: post.likedByMe,
         reposted: post.repostedByMe,
         repostCount: post.repostCount,
+        authored: post.authoredByMe === true,
+        metadata: post.metadata,
         // These are not used but needed to comply with the ObjectProperties type
         '@context': ''
     };

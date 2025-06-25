@@ -1,53 +1,107 @@
 import * as React from 'react';
-import NewPostModal from '@views/Feed/components/NewPostModal';
-import NiceModal from '@ebay/nice-modal-react';
+import FeedbackBox from './FeedbackBox';
+import NewNoteModal from '@src/components/modals/NewNoteModal';
 import Recommendations from './Recommendations';
-import SidebarButton from './SidebarButton';
-import {Button, LucideIcon, Separator} from '@tryghost/shade';
-import {useRouting} from '@tryghost/admin-x-framework/routing';
+import Search from '@src/components/modals/Search';
+import SearchInput from '../Header/SearchInput';
+import SidebarMenuLink from './SidebarMenuLink';
+import {Button, Dialog, DialogContent, DialogTrigger, LucideIcon} from '@tryghost/shade';
+import {useCurrentUser} from '@tryghost/admin-x-framework/api/currentUser';
+import {useFeatureFlags} from '@src/lib/feature-flags';
+import {useLocation} from '@tryghost/admin-x-framework';
+import {useNotificationsCountForUser, useResetNotificationsCountForUser} from '@src/hooks/use-activity-pub-queries';
 
-interface SidebarProps {
-    route: string;
-}
+const Sidebar: React.FC = () => {
+    const {allFlags, flags} = useFeatureFlags();
+    const [isSearchOpen, setIsSearchOpen] = React.useState(false);
+    const [searchQuery, setSearchQuery] = React.useState('');
+    const {data: currentUser} = useCurrentUser();
+    const location = useLocation();
+    const {data: notificationsCount} = useNotificationsCountForUser(currentUser?.slug || '');
+    const resetNotificationsCount = useResetNotificationsCountForUser(currentUser?.slug || '');
 
-const Sidebar: React.FC<SidebarProps> = ({route}) => {
-    const {updateRoute} = useRouting();
+    // Reset count when on notifications page
+    React.useEffect(() => {
+        if (location.pathname === '/notifications' && notificationsCount && notificationsCount > 0) {
+            resetNotificationsCount.mutate();
+        }
+    }, [location.pathname, notificationsCount, resetNotificationsCount]);
+
+    const handleNotificationsClick = React.useCallback(() => {
+        if (notificationsCount && notificationsCount > 0) {
+            resetNotificationsCount.mutate();
+        }
+    }, [notificationsCount, resetNotificationsCount]);
 
     return (
-        <div className='sticky top-[102px] flex min-h-[calc(100vh-102px-32px)] w-[294px] flex-col border-l border-gray-200 dark:border-gray-950'>
+        <div className='sticky top-0 flex min-h-screen w-[320px] flex-col border-l border-gray-200 pr-8 dark:border-gray-950'>
             <div className='flex grow flex-col justify-between'>
-                <div className='flex w-full flex-col items-start gap-8 pl-4 pt-4'>
+                <div className='isolate flex w-full flex-col items-start gap-6 pl-6 pt-6'>
+                    <div className='flex h-[52px] w-full items-center'>
+                        <Dialog open={isSearchOpen} onOpenChange={setIsSearchOpen}>
+                            <DialogTrigger className='w-full'>
+                                <SearchInput />
+                            </DialogTrigger>
+                            <DialogContent>
+                                <Search query={searchQuery} setQuery={setSearchQuery} onOpenChange={setIsSearchOpen} />
+                            </DialogContent>
+                        </Dialog>
+                    </div>
                     <div className='flex w-full flex-col gap-px'>
-                        <SidebarButton active={route === 'inbox'} onClick={() => updateRoute('inbox')}>
+                        <SidebarMenuLink to='/inbox'>
                             <LucideIcon.Inbox size={18} strokeWidth={1.5} />
                             Inbox
-                        </SidebarButton>
-                        <SidebarButton active={route === 'feed'} onClick={() => updateRoute('feed')}>
+                        </SidebarMenuLink>
+                        <SidebarMenuLink to='/feed'>
                             <LucideIcon.Hash size={18} strokeWidth={1.5} />
                             Feed
-                        </SidebarButton>
-                        <SidebarButton active={route === 'notifications'} onClick={() => updateRoute('notifications')}>
+                        </SidebarMenuLink>
+                        <SidebarMenuLink
+                            count={location.pathname !== '/notifications' ? notificationsCount : undefined}
+                            to='/notifications'
+                            onClick={handleNotificationsClick}
+                        >
                             <LucideIcon.Bell size={18} strokeWidth={1.5} />
                             Notifications
-                        </SidebarButton>
-                        <SidebarButton active={route === 'profile'} onClick={() => updateRoute('profile')}>
+                        </SidebarMenuLink>
+                        <SidebarMenuLink to='/explore'>
+                            <LucideIcon.Globe size={18} strokeWidth={1.5} />
+                            Explore
+                        </SidebarMenuLink>
+                        <SidebarMenuLink to='/profile'>
                             <LucideIcon.User size={18} strokeWidth={1.5} />
                             Profile
-                        </SidebarButton>
+                        </SidebarMenuLink>
+                        <SidebarMenuLink to='/preferences'>
+                            <LucideIcon.Settings2 size={18} strokeWidth={1.5} />
+                            Preferences
+                        </SidebarMenuLink>
                     </div>
-                    <Button className='h-9 rounded-full bg-purple-500 px-3 text-md text-white dark:hover:bg-purple-500' onClick={() => NiceModal.show(NewPostModal)}>
-                        <LucideIcon.FilePen />
-                        New note
-                    </Button>
-
-                    <Separator />
+                    <NewNoteModal>
+                        <Button className='h-9 rounded-full bg-purple-500 px-3 text-md text-white hover:bg-purple-600 dark:hover:bg-purple-600'>
+                            <LucideIcon.FilePen />
+                            New note
+                        </Button>
+                    </NewNoteModal>
 
                     <Recommendations />
+
+                    {allFlags.map((flag) => {
+                        if (flags[flag]) {
+                            return (
+                                <div key={flag} className="flex items-center justify-between gap-1 pl-3 opacity-50">
+                                    <span className="font-mono text-xs">{flag}</span>
+                                    <span className='text-green-800 inline-flex items-center rounded bg-green-100 px-1 py-0.5 text-xs font-medium'>
+                                            ON
+                                    </span>
+                                </div>
+                            );
+                        }
+                        return (<></>);
+                    })}
                 </div>
-                <div className='flex items-center gap-2 pl-7 pt-4 text-xs text-gray-400'>
-                    <a className='text-xs font-medium text-gray-700 hover:text-black dark:text-gray-800 dark:hover:text-white' href="https://forum.ghost.org/t/activitypub-beta-start-here/51780" rel="noreferrer" target="_blank">Feedback</a>
-                    &sdot;
-                    <a className='text-xs font-medium text-gray-700 hover:text-black dark:text-gray-800 dark:hover:text-white' href="https://activitypub.ghost.org/archive" rel="noreferrer"target="_blank">Updates</a>
+                <div className='sticky bottom-0 flex items-center gap-2 bg-white pb-4 pl-4 dark:bg-black'>
+                    <FeedbackBox />
                 </div>
             </div>
         </div>
